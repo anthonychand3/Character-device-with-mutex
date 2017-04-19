@@ -48,6 +48,7 @@ static char message[256];
 // used to store the major number of the device
 static int majorNumber;
 static short messageSize;
+static int openedDevices = 0;
 
 // Indexes for the buffer
 int start = 0, length = 0;
@@ -71,7 +72,6 @@ static ssize_t dev_write(struct file *, const char *, size_t, loff_t *);
 // not need if we were working on device drivers for example a graphics card
 static struct file_operations fops = {
     .open = dev_open,
-    .read = dev_read,
     .write = dev_write,
     .release = dev_release,
 };
@@ -163,7 +163,7 @@ static void __exit dev_exit(void)
 static int dev_open(struct inode *inodep, struct file *fp)
 {
     // if the mutex
-    if (muxtex_trylock(&mutexAMJ) == false)
+    if (mutex_trylock(&mutexAMJ) == false)
     {
         printk(KERN_ALERT "OutputDeviceamj: Device cannot be used");
 

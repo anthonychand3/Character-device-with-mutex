@@ -69,7 +69,6 @@ static ssize_t dev_read(struct file *, char *, size_t, loff_t *);
 static struct file_operations fops = {
     .open = dev_open,
     .read = dev_read,
-    .write = dev_write,
     .release = dev_release,
 };
 
@@ -153,14 +152,14 @@ static void __exit dev_exit(void)
 // Function called when the device is opened
 static int dev_open(struct inode *inodep, struct file *fp)
 {
-    if (muxtex_trylock(&mutexAMJ) == false)
+    if (mutex_trylock(&mutexAMJ) == false)
     {
         printk(KERN_ALERT "InputDeviceamj: Device is in use");
 
         return -EBUSY;
     }
 
-    openedDevices++
+    openedDevices++;
     printk(KERN_INFO "InputDeviceamj: Device has been opened %d times\n", openedDevices);
 
     return 0;

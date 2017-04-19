@@ -153,7 +153,15 @@ static void __exit dev_exit(void)
 // Function called when the device is opened
 static int dev_open(struct inode *inodep, struct file *fp)
 {
-    printk(KERN_INFO "InputDeviceamj: Device has been opened\n");
+    if (muxtex_trylock(&mutexAMJ) == false)
+    {
+        printk(KERN_ALERT "InputDeviceamj: Device is in use");
+
+        return -EBUSY;
+    }
+
+    openedDevices++
+    printk(KERN_INFO "InputDeviceamj: Device has been opened %d times\n", openedDevices);
 
     return 0;
 }
@@ -161,102 +169,39 @@ static int dev_open(struct inode *inodep, struct file *fp)
 // Function called when the device is being read
 static ssize_t dev_read(struct file *fp, char *buffer, size_t len, loff_t *offset)
 {
-    // Counter storing the number of errors
-    int errorCounter = 0;
 
-    // Send buffer string to a user
-    errorCounter = copy_to_user(buffer, message, messageSize);
+    signed char letter;
 
-    if (errorCounter == 0)
+    ssize_t i, read = 0;
+
+    for (i = 0; i < len; i++)
     {
-        printk(KERN_INFO "InputDeviceamj: Sent %d characters\n", messageSize);
+        if (length > 0)
+        {
+            read++;
 
-        messageSize = 0;
+		    letter = bufferAMJ[start];
 
-        return 0;
+            start = (start++) % length;
+
+            length--;
+
+            buffer[i] = letter;
+	    }
     }
-    else
-    {
-        printk(KERN_INFO "InputDeviceamj: Failed to send %d characters\n", errorCounter);
 
-        return -EFAULT;
-    }
+    printk(KERN_INFO "InputDeviceamj: %zu characters taken in", read);
+
+    return read;
+
 }
 
-// static ssize_t dev_write(struct file *fp, const char *buffer, size_t len, loff_t *offset)
-// {
-//     int errorCounter = 0;
-//
-//     // There is more room left in the buffer
-//     // So we can add more, we dont know how many more at this step yet
-//     if (messageSize < MESSAGE_LIMIT)
-//     {
-//
-//         // If the message size + the len is less than the message limit
-//         // Then the buffer has room for an additional message
-//         if (messageSize + len < MESSAGE_LIMIT)
-//         {
-//             errorCounter = copy_from_user(message, buffer, len);
-//
-//             // Sending was succesful
-//             if (errorCounter == 0)
-//             {
-//                 printk(KERN_INFO "InputDeviceamj: Received %zu characters from user\n", len);
-//
-//                 // Update the size of the message
-//                 messageSize = strlen(message);
-//
-//                 return 0;
-//             }
-//
-//             // Failed to send
-//             else
-//             {
-//                 printk(KERN_INFO "InputDeviceamj: Failed to send %d characters\n", errorCounter);
-//
-//                 return -EFAULT;
-//             }
-//         }
-//
-//         // There isnt enough room for another message
-//         // copy as many characters from the user as possible
-//         else
-//         {
-//             errorCounter = copy_from_user(message, buffer, MESSAGE_LIMIT - messageSize);
-//
-//             // Sending was succesful
-//             if (errorCounter == 0)
-//             {
-//                 printk(KERN_INFO "InputDeviceamj: Buffer limit reached. Received only %d characters from user\n", MESSAGE_LIMIT - messageSize);
-//
-//                 // Update the size of the message
-//                 messageSize = strlen(message);
-//
-//                 return 0;
-//             }
-//
-//             // Failed to send
-//             else
-//             {
-//                 printk(KERN_INFO "InputDeviceamj: Failed to send %d characters\n", errorCounter);
-//
-//                 return -EFAULT;
-//             }
-//         }
-//     }
-//
-//     // No characters can be recieved since the buffer is full
-//     else
-//     {
-//         printk(KERN_INFO "InputDeviceamj: Buffer is full. No characters written.\n");
-//
-//         return 0;
-//     }
-// }
 
 // Function called when the device is ready to be closed
 static int dev_release(struct inode *inodep, struct file *fp)
 {
+    mutex_unlock(&mutexAMJ);
+
     // Close Device
     printk(KERN_INFO "InputDeviceamj: Device closed\n");
 

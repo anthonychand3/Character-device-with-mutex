@@ -213,7 +213,7 @@ static ssize_t dev_write(struct file *fp, const char *buffer, size_t len, loff_t
     {
         if (length < MESSAGE_LIMIT)
         {
-            djnBuffer[(start + length) % MESSAGE_LIMIT] = bufferAMJ[i];
+            bufferAMJ[(start + length) % MESSAGE_LIMIT] = buffer[i];
             length++;
             characters++;
         }

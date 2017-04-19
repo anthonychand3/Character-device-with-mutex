@@ -206,72 +206,22 @@ static int dev_open(struct inode *inodep, struct file *fp)
 
 static ssize_t dev_write(struct file *fp, const char *buffer, size_t len, loff_t *offset)
 {
-    int errorCounter = 0;
 
-    // There is more room left in the buffer
-    // So we can add more, we dont know how many more at this step yet
-    if (messageSize < MESSAGE_LIMIT)
+    ssize_t i, characters = 0;
+
+    for (i = 0; i < len; i++)
     {
-
-        // If the message size + the len is less than the message limit
-        // Then the buffer has room for an additional message
-        if (messageSize + len < MESSAGE_LIMIT)
+        if (length < MESSAGE_LIMIT)
         {
-            errorCounter = copy_from_user(message, buffer, len);
-
-            // Sending was succesful
-            if (errorCounter == 0)
-            {
-                printk(KERN_INFO "OutputDeviceamj: Received %zu characters from user\n", len);
-
-                // Update the size of the message
-                messageSize = strlen(message);
-
-                return 0;
-            }
-
-            // Failed to send
-            else
-            {
-                printk(KERN_INFO "OutputDeviceamj: Failed to send %d characters\n", errorCounter);
-
-                return -EFAULT;
-            }
+            djnBuffer[(start + length) % MESSAGE_LIMIT] = bufferAMJ[i];
+            length++;
+            characters++;
         }
 
-        // There isnt enough room for another message
-        // copy as many characters from the user as possible
-        else
-        {
-            errorCounter = copy_from_user(message, buffer, MESSAGE_LIMIT - messageSize);
-
-            // Sending was succesful
-            if (errorCounter == 0)
-            {
-                printk(KERN_INFO "OutputDeviceamj: Buffer limit reached. Received only %d characters from user\n", MESSAGE_LIMIT - messageSize);
-
-                // Update the size of the message
-                messageSize = strlen(message);
-
-                return 0;
-            }
-
-            // Failed to send
-            else
-            {
-                printk(KERN_INFO "OutputDeviceamj: Failed to send %d characters\n", errorCounter);
-
-                return -EFAULT;
-            }
-        }
-    }
-
-    // No characters can be recieved since the buffer is full
-    else
-    {
-        printk(KERN_INFO "OutputDeviceamj: Buffer is full. No characters written.\n");
+        printk(KERN_INFO "OutputDeviceamj: Received %zu characters from user\n", characters);
 
         return 0;
+
     }
 }
 
